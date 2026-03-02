@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Kalkulator Pregrada V53</title>
+<title>Kalkulator Pregrada V54</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--d:#08111d;--p:#0d1c2e;--c:#152638;--i:#1c3350;--a:#29b6f6;--ag:rgba(41,182,246,.12);--o:#f5a023;--g:#4cd47a;--r:#f05060;--t:#cdd9e8;--td:#7a9ab8;--mono:'Share Tech Mono','Courier New',monospace;--ui:'Rajdhani','Trebuchet MS',sans-serif}
@@ -31,6 +31,7 @@ body{font-family:var(--ui);background:var(--d);color:var(--t);display:flex;heigh
 .fld{margin-bottom:7px}.fld:last-child{margin-bottom:0}
 .fld-lbl{display:block;font-size:.7em;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;opacity:.85}
 input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:7px 9px;background:var(--i);border:1px solid rgba(41,182,246,.25);border-radius:5px;color:#e8f4fd;font-family:var(--mono);font-size:.9em;line-height:1.3;transition:border-color .15s,background .15s}
+select option{background:var(--c);color:#e8f4fd}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--a);background:rgba(41,182,246,.08);box-shadow:0 0 0 2px rgba(41,182,246,.12)}
 input[type=color]{width:100%;height:34px;padding:3px;background:var(--i);border:1px solid rgba(41,182,246,.25);border-radius:5px;cursor:pointer}
 input[type=range]{width:100%;accent-color:var(--a);margin-top:2px}
@@ -369,7 +370,7 @@ td{padding:8px 14px;border-bottom:1px solid #f0f4f8;color:#1e293b;font-family:va
 
 <!-- ═══ MOBILNI UI (skriven na desktopu CSS-om) ═══ -->
 <div class="m-topbar" style="display:none">
-  <h2>&#9632; Kalkulator Pregrada V53</h2>
+  <h2>&#9632; Kalkulator Pregrada V54</h2>
 </div>
 <div class="m-bar" style="display:none">
   <div class="m-tab on"  id="mt-skica"  onclick="mTab('skica')">🖼 Skica</div>
@@ -427,7 +428,7 @@ td{padding:8px 14px;border-bottom:1px solid #f0f4f8;color:#1e293b;font-family:va
         <button class="btn btn-a btn-full" onclick="saveProject()" style="font-size:.82em">💾 Spremi projekt</button>
         <button class="btn btn-outline btn-full" onclick="document.getElementById('mLoadFileInput').click()" style="font-size:.82em">📂 Otvori projekt</button>
       </div>
-      <input type="file" id="mLoadFileInput" accept=".ptv53,.json" style="display:none" onchange="loadProject(this)">
+      <input type="file" id="mLoadFileInput" accept=".ptv54,.json" style="display:none" onchange="loadProject(this)">
     </div>
     <div style="font-size:.72em;font-weight:700;color:var(--a);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Opcije prikaza</div>
     <div style="background:rgba(0,0,0,.2);border-radius:6px;padding:10px;margin-bottom:10px;display:flex;flex-direction:column;gap:4px">
@@ -449,7 +450,7 @@ td{padding:8px 14px;border-bottom:1px solid #f0f4f8;color:#1e293b;font-family:va
 <!-- ═══════════ SIDEBAR ═══════════ -->
 <div class="sidebar">
   <div class="sbhead">
-    <h1>&#9632; Kalkulator Pregrada V53</h1>
+    <h1>&#9632; Kalkulator Pregrada V54</h1>
     <p>Multi-Pregrada Kalkulator · Projektiranje &amp; Kalkulacija</p>
   </div>
   <div class="sbscroll">
@@ -670,6 +671,12 @@ td{padding:8px 14px;border-bottom:1px solid #f0f4f8;color:#1e293b;font-family:va
 <div class="main" id="printArea">
 
   <div class="toolbar print-no">
+    <button id="btnUndo" onclick="undoAction()" disabled title="Poništi (Ctrl+Z)"
+      style="padding:4px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:.8em;font-family:var(--ui);font-weight:700;color:#555;opacity:.7"
+      onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.7">↩ Undo</button>
+    <button id="btnRedo" onclick="redoAction()" disabled title="Ponovi (Ctrl+Y)"
+      style="padding:4px 10px;background:#f0f4f8;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:.8em;font-family:var(--ui);font-weight:700;color:#555;opacity:.7"
+      onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.7">↪ Redo</button>
     <div class="tb-info">
       <strong id="dKupac">—</strong> &nbsp;|&nbsp; Nalog: <strong id="dNalog">—</strong> &nbsp;|&nbsp; Boja: <strong id="dBoja">—</strong> &nbsp;|&nbsp; <strong id="dWorker" style="color:#e07a00"></strong>
     </div>
@@ -752,6 +759,51 @@ let partitions=[], activeId=null, viewMode='single', tableTab='active';
 let nFront=1, hasLeft=false, hasRight=false;
 let allZoom=1, allPanX=0, allPanY=0, panMode=false, isPanning=false, lastMX=0, lastMY=0;
 let customColors=[], _isPrinting=false;
+let _isExporting=false;
+// ─── UNDO/REDO ──────────────────────────────────────
+let _undoStack=[], _redoStack=[], _undoLock=false;
+const MAX_UNDO=40;
+function _snapState(){
+  return JSON.stringify({partitions,activeId,nFront,hasLeft,hasRight});
+}
+function _pushUndo(){
+  if(_undoLock) return;
+  _undoStack.push(_snapState());
+  if(_undoStack.length>MAX_UNDO) _undoStack.shift();
+  _redoStack=[];
+  _updateUndoUI();
+}
+function _applyState(snap){
+  _undoLock=true;
+  const s=JSON.parse(snap);
+  partitions=s.partitions; activeId=s.activeId;
+  nFront=s.nFront; hasLeft=s.hasLeft; hasRight=s.hasRight;
+  document.getElementById('rngNFront').value=nFront;
+  document.getElementById('valNFront').textContent=nFront;
+  document.getElementById('chkLeft').checked=hasLeft;
+  document.getElementById('chkRight').checked=hasRight;
+  loadPartitionToForm();
+  render();
+  _undoLock=false;
+}
+function undoAction(){
+  if(!_undoStack.length) return;
+  _redoStack.push(_snapState());
+  _applyState(_undoStack.pop());
+  _updateUndoUI();
+}
+function redoAction(){
+  if(!_redoStack.length) return;
+  _undoStack.push(_snapState());
+  _applyState(_redoStack.pop());
+  _updateUndoUI();
+}
+function _updateUndoUI(){
+  const uBtn=document.getElementById('btnUndo');
+  const rBtn=document.getElementById('btnRedo');
+  if(uBtn) uBtn.disabled=!_undoStack.length;
+  if(rBtn) rBtn.disabled=!_redoStack.length;
+}
 
 // ═══════════════════════════════════════════════════════
 //  COLORS
@@ -903,6 +955,7 @@ function getActive(){return partitions.find(p=>p.id===activeId)||null;}
 //  EVENTS
 // ═══════════════════════════════════════════════════════
 function onConfigChange(){
+  _pushUndo();
   nFront=parseInt(document.getElementById('rngNFront').value)||1;
   hasLeft=document.getElementById('chkLeft').checked;
   hasRight=document.getElementById('chkRight').checked;
@@ -914,6 +967,7 @@ function onGlobalChange(){
   render();
 }
 function onPartChange(){
+  _pushUndo();
   const p=getActive(); if(!p) return;
   p.W=parseFloat(document.getElementById('pW').value)||0;
   p.H=parseFloat(document.getElementById('pH').value)||0;
@@ -942,11 +996,13 @@ function onPartSyncH(){
   onPartChange();
 }
 function syncDimsToAll(){
+  _pushUndo();
   const p=getActive(); if(!p) return;
   partitions.forEach(q=>{q.H=p.H;q.H2=p.H2;q.bojaVisual=p.bojaVisual;q.slopeMat=p.slopeMat;});
   render();
 }
 function syncRuboviToAll(){
+  _pushUndo();
   const p=getActive(); if(!p) return;
   partitions.forEach(q=>{q.bL=p.bL;q.bR=p.bR;q.bT=p.bT;q.bB=p.bB;q.napust=p.napust;});
   render();
@@ -1207,7 +1263,8 @@ function buildUkupneHTML(){
   let h=`<div style="padding:12px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <h3 style="font-family:'Rajdhani',sans-serif;font-size:1.1em;color:#2c3e50">📦 UKUPNE KOLIČINE — Zbirni popis materijala za cijeli nalog</h3>
-    <button onclick="printUkupne()" style="padding:5px 12px;background:#2c3e50;color:white;border:none;border-radius:4px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8em">🖨 Ispiši</button>
+    <button onclick="printUkupne(false)" style="padding:5px 12px;background:#2c3e50;color:white;border:none;border-radius:4px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8em">🖨 Ispiši</button>
+    <button onclick="printUkupne(true)" style="padding:5px 9px;background:#34495e;color:white;border:none;border-radius:4px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.8em;margin-left:4px">🖨 Bez cijena</button>
   </div>
   <table><thead><tr><th>Materijal / Usluga</th><th>Specifikacija</th><th>Ukupna količina</th><th class="pc"${pcVis}>Jed.cijena</th><th class="pc"${pcVis}>Ukupno €</th></tr></thead><tbody>`;
   h+=`<tr><td><strong>Prozirna folija</strong></td><td>Ukupno svih pregrada</td><td><strong>${totProz.toFixed(2)} m²</strong> <span style="color:#777;font-size:.9em">(${totProzM.toFixed(1)} m' role)</span></td><td class="pc"${pcVis}>${c.proz.toFixed(2)}</td><td class="pc"${pcVis}>${(totProz*c.proz).toFixed(2)}</td></tr>`;
@@ -1227,11 +1284,13 @@ function buildUkupneHTML(){
   h+='</tbody></table></div>';
   return h;
 }
-function printUkupne(){
+function printUkupne(forcHideP=false){
   const ex=document.getElementById('dynamicPrintStyle');if(ex) ex.remove();
   const s=document.createElement('style');s.id='dynamicPrintStyle';
   s.textContent='@page{size:A4 portrait;margin:8mm} #canvasWrap{display:none!important}';
   document.head.appendChild(s);
+  const _prevHideP=document.getElementById('chkHideP').checked;
+  if(forcHideP) document.getElementById('chkHideP').checked=true;
   document.getElementById('tableContent').innerHTML=buildUkupneHTML();
   document.getElementById('printHeader').style.display='block';
   setTimeout(()=>{
@@ -1239,6 +1298,7 @@ function printUkupne(){
     setTimeout(()=>{
       document.getElementById('printHeader').style.display='none';
       const dps=document.getElementById('dynamicPrintStyle');if(dps)dps.remove();
+      if(forcHideP) document.getElementById('chkHideP').checked=_prevHideP;
       setTableTab('ukupne');
     },1200);
   },300);
@@ -1292,6 +1352,7 @@ function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over
 function dragDrop(e,targetId){
   e.stopPropagation();
   if(dragSrcId===targetId) return;
+  _pushUndo();
   const si=partitions.findIndex(p=>p.id===dragSrcId);
   const ti=partitions.findIndex(p=>p.id===targetId);
   if(si<0||ti<0) return;
@@ -1404,7 +1465,7 @@ function drawSingle(ctx,cW,cH,p,r){
   drawSplitLines(ctx,p,lt,lb,oX,scale,splitLines);
   if(p.addZip) drawZip(ctx,p,lt,rt,lb,rb,hMax,napust,scale);
   drawFittings(ctx,lt,rt,lb,rb,p,brVL,brVR,brH,razVL,razVR,razH,hL,hR,scale,oX,firstAlka,false);
-  drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,false);
+  drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,false,0,1,1.0);
   // Number badge — tik iznad gornjeg desnog kuta pregrade
   const _pNum=partitions.findIndex(x=>x.id===p.id)+1;
   const _nbX=rt.x-14;
@@ -1586,7 +1647,7 @@ function drawFittings(ctx,lt,rt,lb,rb,p,brVL,brVR,brH,razVL,razVR,razH,hL,hR,sca
       ctx.fillStyle=col;ctx.strokeStyle=stroke;
       ctx.beginPath();ctx.ellipse(x,y,ry,rx,0,0,Math.PI*2);ctx.fill();ctx.stroke();
     }
-    ctx.strokeStyle='red';ctx.fillStyle='red';ctx.font='bold '+fs(11)+'px Arial';ctx.textAlign='center';
+    ctx.strokeStyle='red';ctx.fillStyle='red';ctx.font='bold '+fs(14)+'px Arial';ctx.textAlign='center';
     const xA=oX+5*scale, xB=oX+(5+razH)*scale;
     const yA=lt.y+5*scale+(xA-oX)*Math.tan(ang);
     const yB=lt.y+5*scale+(xB-oX)*Math.tan(ang);
@@ -1613,17 +1674,17 @@ function contrastColor(hex){
     return lum>140?'#111111':'#ffffff';
   }catch(e){return '#ffffff';}
 }
-function drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,compact=false){
+function drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,compact=false,partIdx=0,totalParts=1,fontScale=1.0){
   const{razVL,hMax,firstAlka}=r;
   const fa=firstAlka||5;
-  const fMult=compact?0.65:1.0;
+  const fMult=(compact?0.65:1.0)*fontScale;
   const fs=v=>Math.max(6,Math.round(v*fMult));
   const off=v=>Math.max(8,Math.round(v*fMult));
   ctx.textAlign='center';
 
   // Left VL spacing annotation
   if(r.brVL>1){
-    ctx.strokeStyle='red';ctx.fillStyle='red';ctx.lineWidth=1.2;ctx.font='bold '+fs(11)+'px Arial';
+    ctx.strokeStyle='red';ctx.fillStyle='red';ctx.lineWidth=1.2;ctx.font='bold '+fs(14)+'px Arial';
     const y1=lb.y-fa*scale,y2=lb.y-(fa+razVL)*scale;
     const xOff=off(18);
     ctx.beginPath();ctx.moveTo(oX-xOff,y1);ctx.lineTo(oX-xOff,y2);ctx.stroke();
@@ -1637,24 +1698,36 @@ function drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,compact=false
   ctx.font='bold '+fs(18)+'px Arial';
   ctx.fillText(p.W+' cm',oX+p.W*scale/2,wKy+off(22));
 
-  // Height dimensions — same font size as width for readability
+  // Height dimensions — broken-line style:
+  // Horizontal tick at top+bottom, vertical dimension line on xO,
+  // text floats at midpoint BREAKING the vertical line (2 line segments + label gap)
+  // Text always black — always readable regardless of partition color
   const hOff=off(40);
   const drawH=(x,y1,y2,val,side)=>{
     const xO=side==='L'?x-hOff:x+hOff;
+    const mid=(y1+y2)/2;
+    ctx.font='bold '+fs(18)+'px Arial';
+    const tw=ctx.measureText(val+' cm').width;
+    const th=fs(18);
+    // Half-gap around text: half of text-width (rotated 90°, so height = text width)
+    const gap=tw/2+off(4);
+    // Horizontal ticks
     ctx.strokeStyle='#555';ctx.lineWidth=1;
     ctx.beginPath();
     ctx.moveTo(x,y1);ctx.lineTo(xO,y1);
     ctx.moveTo(x,y2);ctx.lineTo(xO,y2);
-    ctx.moveTo(xO,y1);ctx.lineTo(xO,y2);
     ctx.stroke();
+    // Vertical line — two segments, broken in the middle for the text
+    ctx.beginPath();
+    ctx.moveTo(xO,y1);ctx.lineTo(xO,mid-gap);
+    ctx.moveTo(xO,mid+gap);ctx.lineTo(xO,y2);
+    ctx.stroke();
+    // Text: centered at mid, rotated, always dark
     ctx.save();
-    const _txH=side==='L'?xO-off(18):xO+off(18), _tyH=(y1+y2)/2;
-    ctx.translate(_txH,_tyH);ctx.rotate(-Math.PI/2);
-    ctx.font='bold '+fs(18)+'px Arial';
-    const _twH=ctx.measureText(val+' cm').width, _thH=fs(18);
-    ctx.fillStyle='rgba(255,255,255,0.92)';
-    ctx.fillRect(-_twH/2-2,-_thH/2-1,_twH+4,_thH+3);
-    ctx.fillStyle='#2c3e50';ctx.fillText(val+' cm',0,0);ctx.restore();
+    ctx.translate(xO,mid);ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='#1a1a1a';
+    ctx.fillText(val+' cm',0,th*0.35);
+    ctx.restore();
   };
   drawH(oX,lt.y,lb.y,(p.slopeType==='left'?p.H2:p.H),'L');
   drawH(rb.x,rt.y,rb.y,(p.slopeType==='right'?p.H2:p.H),'R');
@@ -1670,7 +1743,7 @@ function drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,compact=false
 
   // Border labels — text color: always black in outline mode, else contrast
   const lblColor=isOutline()?'#111111':contrastColor(p.bojaVisual);
-  ctx.fillStyle=lblColor;ctx.font='bold '+fs(10)+'px Arial';
+  ctx.fillStyle=lblColor;ctx.font='bold '+fs(13)+'px Arial';
   ctx.fillText(p.bL+'cm',pX1-off(4),lb.y-(p.H*scale)/2);
   ctx.fillText(p.bR+'cm',pX2+off(4),lb.y-(p.H*scale)/2);
   // Top border label: placed at the LOWER top level (p.H from floor) so it sits inside the partition
@@ -1753,20 +1826,20 @@ function fitAll(){
   allPanY=(cH-L.worldH*allZoom)/2;
   updateZoomLabel();render();
 }
-function drawAllPartitions(ctx,canvas){
+function drawAllPartitions(ctx,canvas,_overrideSize=null){
   if(!partitions.length) return;
-  canvas.width=_isPrinting?2200:1100;
-  canvas.height=_isPrinting?1100:600;
+  if(_overrideSize){canvas.width=_overrideSize.width;canvas.height=_overrideSize.height;}
+  else{canvas.width=_isPrinting?2200:1100;canvas.height=_isPrinting?1100:600;}
   const cW=canvas.width,cH=canvas.height;
   ctx.clearRect(0,0,cW,cH);
   // White background for print, blue-grey for screen
-  ctx.fillStyle=(isOutline()||_isPrinting)?'#ffffff':'#dde3ec';
+  ctx.fillStyle=(isOutline()||_isPrinting||_isExporting)?'#ffffff':'#dde3ec';
   ctx.fillRect(0,0,cW,cH);
   ctx.save();
   ctx.translate(allPanX,allPanY);
   ctx.scale(allZoom,allZoom);
   // Grid (not in print)
-  if(!isOutline()&&!_isPrinting){
+  if(!isOutline()&&!_isPrinting&&!_isExporting){
     ctx.strokeStyle='rgba(41,182,246,0.06)';ctx.lineWidth=1/allZoom;
     for(let x=0;x<4000;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,1200);ctx.stroke();}
     for(let y=0;y<1200;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(4000,y);ctx.stroke();}
@@ -1811,7 +1884,7 @@ function drawAllPartitions(ctx,canvas){
 
   // PROLAZ 2: Sve anotacije + label badge + broj — uvijek iznad svih shape-ova
   _allData.forEach(({p,idx,ox,baseY,scale,r,lt,rt,lb,rb})=>{
-    drawAnnotations(ctx,p,lt,rt,lb,rb,ox,baseY,p.napust,scale,r,true);
+    drawAnnotations(ctx,p,lt,rt,lb,rb,ox,baseY,p.napust,scale,r,true,idx,_allData.length);
     // Label badge
     ctx.textAlign='center';
     const lbg=p.type!=='front'?'#f5a023':'#29b6f6';
@@ -1839,8 +1912,8 @@ function drawAllPartitions(ctx,canvas){
     drawPartitionNumber(ctx,idx+1,ox+p.W*scale-8,Math.min(lt.y,rt.y)-14);
   });
   ctx.restore();
-  // HUD bar — only on screen (not print)
-  if(!isOutline()&&!_isPrinting){
+  // HUD bar — only on screen (not print, not exporting)
+  if(!isOutline()&&!_isPrinting&&!_isExporting){
     ctx.fillStyle='rgba(8,17,29,0.82)';ctx.fillRect(0,0,cW,34);
     ctx.fillStyle='#29b6f6';ctx.font='bold 13px Rajdhani,sans-serif';ctx.textAlign='left';
     ctx.fillText('KALKULATOR PREGRADA V51  ·  '+partitions.length+' pregrada(e)',14,22);
@@ -1886,13 +1959,13 @@ function closeMsk(){document.getElementById('mskOverlay').style.display='none';}
 // ─── MSK LAYOUT CONSTANTS ───────────────────────
 const MSK_COLS=3;
 const MSK_CANVAS_W=1085;           // A4 landscape content width (287mm @ 96dpi)
-const MSK_CANVAS_H=748;            // A4 landscape content height (200mm @ 96dpi) — malo manji za sigurnost
+const MSK_CANVAS_H=738;            // A4 landscape content height — sigurnosni odmak
 const MSK_HEADER_H=78;             // zaglavlje (naziv, kupac, datum) — samo 1. stranica
-const MSK_ROW_H=325;               // visina jednog reda pregrada (slot+razmak)
-const MSK_SLOT_W=Math.floor((MSK_CANVAS_W-40)/MSK_COLS); // ~340
-const MSK_SLOT_H=190;              // max visina slike pregrade unutar slota
-const MSK_SLOT_PAD_X=12;
-const MSK_SLOT_PAD_Y=28;           // prostor iznad pregrade (za label)
+const MSK_ROW_H=310;               // visina jednog reda (box+kote gore/dolje+napomena)
+const MSK_SLOT_W=Math.floor((MSK_CANVAS_W-30)/MSK_COLS); // ~352 — širi jer vertikalne kote
+const MSK_SLOT_H=170;              // max visina slike pregrade unutar slota
+const MSK_SLOT_PAD_X=26;          // prostor za vertikalnu kotu sa strane (uža nego horizontalna)
+const MSK_SLOT_PAD_Y=22;           // prostor iznad pregrade (za label)
 // Koliko redova stane na prvu/ostale stranice
 const MSK_ROWS_P1=Math.floor((MSK_CANVAS_H-MSK_HEADER_H)/MSK_ROW_H);  // =2
 const MSK_ROWS_PN=Math.floor(MSK_CANVAS_H/MSK_ROW_H);                  // =2
@@ -1944,94 +2017,106 @@ function drawMsk(){
   mskDrawPartitionsOnCtx(ctx,items,MSK_HEADER_H);
 }
 function drawMskPartition(ctx,p,ox,oy,W,H,num){
-  // Determine shape
-  const isSlope=p.slopeType!=='none';
-  const hHigh=Math.max(p.H,p.H2), hLow=Math.min(p.H,p.H2);
-  // Visoka strana uvijek = H (puni box), kratka strana skalira proporcionalno
-  // slopeType='right': desna strana je viša (H2), lijeva kraća (p.H)
-  // slopeType='left':  lijeva strana je viša (H2), desna kraća (p.H)
-  const shortRatio=p.H/p.H2; // omjer kratke prema visokoj strani
+  const hHigh=Math.max(p.H,p.H2);
+  const shortRatio=(p.slopeType!=='none'&&p.H2>0)?p.H/p.H2:1;
   const hR=p.slopeType==='right'?H:(p.slopeType==='left'?H*shortRatio:H);
   const hL=p.slopeType==='left'?H:(p.slopeType==='right'?H*shortRatio:H);
 
-  // Draw outline samo (bez boja za skicu)
+  // Draw partition outline
   ctx.strokeStyle='#2c3e50';ctx.lineWidth=2;
   ctx.beginPath();
   ctx.moveTo(ox,oy+H-hL);ctx.lineTo(ox+W,oy+H-hR);
   ctx.lineTo(ox+W,oy+H);ctx.lineTo(ox,oy+H);ctx.closePath();
   ctx.stroke();
 
-  // Glazing outline (proporcionalno s rubovima) — samo linija
+  // Glazing outline
   const scaleW=W/p.W, scaleH=H/hHigh;
   const bLpx=p.bL*scaleW, bRpx=p.bR*scaleW, bTpx=p.bT*scaleH, bBpx=p.bB*scaleH;
   const gX1=ox+bLpx, gX2=ox+W-bRpx;
   const flatTopY=oy+H-p.H*scaleH;
-  const gY1=flatTopY+bTpx, gY2=flatTopY+bTpx;
-  const gYbot=oy+H-bBpx;
+  const gY1=flatTopY+bTpx, gYbot=oy+H-bBpx;
   if(gYbot>gY1&&gX2>gX1){
     ctx.strokeStyle='rgba(30,100,200,0.7)';ctx.lineWidth=1.2;
-    ctx.beginPath();ctx.moveTo(gX1,gY1);ctx.lineTo(gX2,gY2);ctx.lineTo(gX2,gYbot);ctx.lineTo(gX1,gYbot);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(gX1,gY1);ctx.lineTo(gX2,gY1);ctx.lineTo(gX2,gYbot);ctx.lineTo(gX1,gYbot);ctx.closePath();ctx.stroke();
   }
 
-  // Label name — uvijek iznad gornjeg ruba pregrade
-  const topOfShape=oy+H-Math.max(hL,hR); // = oy jer max(hL,hR)=H
-  ctx.fillStyle='#2c3e50';ctx.font='bold 13px Rajdhani,sans-serif';ctx.textAlign='center';
-  ctx.fillText(p.label,ox+W/2,topOfShape-8);
+  // Label name
+  ctx.fillStyle='#2c3e50';ctx.font='bold 11px Rajdhani,sans-serif';ctx.textAlign='center';
+  ctx.fillText(p.label,ox+W/2,oy+H-Math.max(hL,hR)-6);
 
-  // Dimension boxes
-  const drawDimBox=(bx,by,dim,label)=>{
-    ctx.strokeStyle='#999';ctx.lineWidth=1;
-    ctx.strokeRect(bx-22,by-10,44,20);
-    ctx.fillStyle='white';ctx.fillRect(bx-21,by-9,42,18);
-    ctx.fillStyle='#aaa';ctx.font='9px Arial';ctx.textAlign='center';
-    ctx.fillText(label||'cm',bx,by-1);
-    // Dimension value (blank for field measurement)
-    ctx.fillStyle='#ccc';ctx.font='bold 11px Arial';
-    ctx.fillText('_____',bx,by+8);
-  };
-
-  // Width dim (bottom)
-  ctx.strokeStyle='#e74c3c';ctx.lineWidth=1;
-  ctx.setLineDash([4,3]);
-  ctx.beginPath();ctx.moveTo(ox,oy+H+18);ctx.lineTo(ox+W,oy+H+18);ctx.stroke();
-  ctx.setLineDash([]);
-  // Arrow tips
-  ctx.fillStyle='#e74c3c';
-  [[ox,oy+H+18],[ox+W,oy+H+18]].forEach(([ax,ay],i)=>{
-    const dir=i===0?1:-1;
-    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+dir*8,ay-4);ctx.lineTo(ax+dir*8,ay+4);ctx.fill();
-  });
-  drawDimBox(ox+W/2,oy+H+25,'W','Širina');
-
-  // Left height dim
-  ctx.strokeStyle='#e74c3c';ctx.lineWidth=1;ctx.setLineDash([4,3]);
-  ctx.beginPath();ctx.moveTo(ox-18,oy+H-hL);ctx.lineTo(ox-18,oy+H);ctx.stroke();ctx.setLineDash([]);
-  [[ox-18,oy+H-hL],[ox-18,oy+H]].forEach(([ax,ay],i)=>{
-    const dir=i===0?1:-1;
-    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-4,ay+dir*8);ctx.lineTo(ax+4,ay+dir*8);ctx.fill();
-  });
-  drawDimBox(ox-42,oy+H-hL/2,'H','Vis.L');
-
-  // Right height dim (only if slope)
-  if(isSlope){
+  // ── Vertical broken-line dim box (on the vertical dim line, like screen view) ──
+  // BX: box width, BH: box height (rotated: appears as tall narrow box)
+  const BW=36, BH=18; // box in local unrotated coords before rotation
+  function drawVertDimBox(lx,yTop,yBot){
+    // lx = x of the vertical dim line
+    // Broken-line: line top→(mid-gap), box, (mid+gap)→bot
+    const mid=(yTop+yBot)/2;
+    const gap=BW/2+3; // half of box height after rotation
     ctx.strokeStyle='#e74c3c';ctx.lineWidth=1;ctx.setLineDash([4,3]);
-    ctx.beginPath();ctx.moveTo(ox+W+18,oy+H-hR);ctx.lineTo(ox+W+18,oy+H);ctx.stroke();ctx.setLineDash([]);
-    [[ox+W+18,oy+H-hR],[ox+W+18,oy+H]].forEach(([ax,ay],i)=>{
-      const dir=i===0?1:-1;
-      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-4,ay+dir*8);ctx.lineTo(ax+4,ay+dir*8);ctx.fill();
-    });
-    drawDimBox(ox+W+42,oy+H-hR/2,'H2','Vis.D');
+    // Arrowheads
+    ctx.fillStyle='#e74c3c';
+    // Top arrow (pointing up)
+    ctx.beginPath();ctx.moveTo(lx,yTop);ctx.lineTo(lx-4,yTop+8);ctx.lineTo(lx+4,yTop+8);ctx.fill();
+    // Bottom arrow (pointing down)
+    ctx.beginPath();ctx.moveTo(lx,yBot);ctx.lineTo(lx-4,yBot-8);ctx.lineTo(lx+4,yBot-8);ctx.fill();
+    // Line segments (broken in middle for box)
+    ctx.beginPath();ctx.moveTo(lx,yTop+8);ctx.lineTo(lx,mid-gap);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(lx,mid+gap);ctx.lineTo(lx,yBot-8);ctx.stroke();
+    ctx.setLineDash([]);
+    // Rotated input box centered at mid on the line
+    ctx.save();
+    ctx.translate(lx,mid);ctx.rotate(-Math.PI/2);
+    ctx.strokeStyle='#888';ctx.lineWidth=1;
+    ctx.strokeRect(-BW/2,-BH/2,BW,BH);
+    ctx.fillStyle='white';ctx.fillRect(-BW/2+1,-BH/2+1,BW-2,BH-2);
+    ctx.fillStyle='#bbb';ctx.font='9px Arial';ctx.textAlign='center';
+    ctx.fillText('________',0,3);
+    ctx.restore();
+  }
+  function drawHorizDimBox(yLine,xLeft,xRight){
+    const mid=(xLeft+xRight)/2;
+    const gap=BW/2+3;
+    ctx.strokeStyle='#e74c3c';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.fillStyle='#e74c3c';
+    // Left arrow
+    ctx.beginPath();ctx.moveTo(xLeft,yLine);ctx.lineTo(xLeft+8,yLine-4);ctx.lineTo(xLeft+8,yLine+4);ctx.fill();
+    // Right arrow
+    ctx.beginPath();ctx.moveTo(xRight,yLine);ctx.lineTo(xRight-8,yLine-4);ctx.lineTo(xRight-8,yLine+4);ctx.fill();
+    // Line segments broken for box
+    ctx.beginPath();ctx.moveTo(xLeft+8,yLine);ctx.lineTo(mid-gap,yLine);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(mid+gap,yLine);ctx.lineTo(xRight-8,yLine);ctx.stroke();
+    ctx.setLineDash([]);
+    // Horizontal input box
+    ctx.strokeStyle='#888';ctx.lineWidth=1;
+    ctx.strokeRect(mid-BW/2,yLine-BH/2,BW,BH);
+    ctx.fillStyle='white';ctx.fillRect(mid-BW/2+1,yLine-BH/2+1,BW-2,BH-2);
+    ctx.fillStyle='#bbb';ctx.font='9px Arial';ctx.textAlign='center';
+    ctx.fillText('________',mid,yLine+3);
   }
 
-  // Extra blank fields
-  ctx.fillStyle='#666';ctx.font='10px Arial';ctx.textAlign='left';
-  ctx.fillText('Napomena: ___________________________',ox,oy+H+50);
-  ctx.fillText('Posebno: ____________________________',ox,oy+H+65);
+  // Width dim — horizontal, below partition
+  const wLineY=oy+H+16;
+  drawHorizDimBox(wLineY,ox,ox+W);
 
-  // Number badge gornji desni kut
-  ctx.fillStyle='#2c3e50';ctx.beginPath();ctx.arc(ox+W+8,oy-5,10,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='white';ctx.font='bold 10px Arial';ctx.textAlign='center';
-  ctx.fillText(num,ox+W+8,oy-1);
+  // Left height dim — vertical, always shown
+  const lDimX=ox-16;
+  drawVertDimBox(lDimX,oy+H-hL,oy+H);
+
+  // Right height dim — vertical, ALWAYS shown (both sides)
+  const rDimX=ox+W+16;
+  drawVertDimBox(rDimX,oy+H-hR,oy+H);
+
+  // Napomena + Posebno — centred under partition
+  const noteY=oy+H+38;
+  const cX=ox+W/2;
+  ctx.fillStyle='#555';ctx.font='9px Arial';ctx.textAlign='center';
+  ctx.fillText('Napomena: _______________________',cX,noteY);
+  ctx.fillText('Posebno: ________________________',cX,noteY+14);
+
+  // Number badge top-right
+  ctx.fillStyle='#2c3e50';ctx.beginPath();ctx.arc(ox+W-4,oy+H-Math.max(hL,hR)-14,9,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='white';ctx.font='bold 9px Arial';ctx.textAlign='center';
+  ctx.fillText(num,ox+W-4,oy+H-Math.max(hL,hR)-10);
 }
 function printMsk(){
   const n=partitions.length;
@@ -2102,19 +2187,36 @@ function exportJPEG(){
   const nalog=(document.getElementById('inpNalog').value||'').replace(/[^a-zA-Z0-9\-_]/g,'').trim();
   const hiCanvas=document.createElement('canvas');
   if(viewMode==='all'){
-    // Sve pregrade: scale up origCanvas koji je već renderiran (4.4x)
-    const scaleAll=4.4;
-    hiCanvas.width=Math.round(origCanvas.width*scaleAll);
-    hiCanvas.height=Math.round(origCanvas.height*scaleAll);
+    // Sve pregrade: render na offscreen canvas visokom rezolucijom
+    // Ciljna rezolucija: ≈ A4 landscape @ 200dpi = 2338x1654
+    const expW=3300, expH=2200; // visoka rezolucija za ostrost pri zoomiranju
+    hiCanvas.width=expW; hiCanvas.height=expH;
     const hiCtx=hiCanvas.getContext('2d');
-    hiCtx.imageSmoothingEnabled=true;hiCtx.imageSmoothingQuality='high';
-    hiCtx.drawImage(origCanvas,0,0,hiCanvas.width,hiCanvas.height);
+    hiCtx.fillStyle='#ffffff';hiCtx.fillRect(0,0,expW,expH);
+    // Izračunaj zoom koji puni expW×expH
+    const _savedZ=allZoom,_savedPX=allPanX,_savedPY=allPanY,_savedPrint=_isPrinting;
+    _isExporting=true; // hide HUD bar during export
+    const L=computeAllLayout();
+    const pad=60;
+    const expZoom=Math.min((expW-pad*2)/L.worldW,(expH-pad*2)/L.worldH);
+    allZoom=expZoom;
+    allPanX=(expW-L.worldW*expZoom)/2;
+    allPanY=(expH-L.worldH*expZoom)/2;
+    // Render: spremi canvas dims, postavi na expW/expH, renderiraj, vrati
+    const mainCanvas=document.getElementById('canvas');
+    const _origW=mainCanvas.width,_origH=mainCanvas.height;
+    mainCanvas.width=expW;mainCanvas.height=expH;
+    drawAllPartitions(hiCtx,{width:expW,height:expH});
+    mainCanvas.width=_origW;mainCanvas.height=_origH;
+    allZoom=_savedZ;allPanX=_savedPX;allPanY=_savedPY;_isExporting=false;
     const parts=(kupac?kupac+'_':'')+(nalog?nalog+'_':'')+'Sve_pregrade';
     hiCanvas.toBlob(blob=>{
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
       a.download=parts+'_hires.jpg';
       a.click();URL.revokeObjectURL(a.href);
+      // Restore screen render
+      render();
     },'image/jpeg',0.95);
   } else {
     // Aktivna pregrada: 2.4x
@@ -2135,36 +2237,68 @@ function exportJPEG(){
 }
 function exportPDF(){
   const canvas=document.getElementById('canvas');
-  // Hi-res render isti kao JPEG export
-  const pdfScale=(viewMode==='all')?4.4:2.4;
-  const pdfCanvas=document.createElement('canvas');
-  pdfCanvas.width=Math.round(canvas.width*pdfScale);
-  pdfCanvas.height=Math.round(canvas.height*pdfScale);
-  const pdfCtx=pdfCanvas.getContext('2d');
-  pdfCtx.imageSmoothingEnabled=true;pdfCtx.imageSmoothingQuality='high';
-  pdfCtx.drawImage(canvas,0,0,pdfCanvas.width,pdfCanvas.height);
-  const dataUrl=pdfCanvas.toDataURL('image/png');
+  // Hi-res render — isti pristup kao JPEG export
+  let dataUrl;
+  if(viewMode==='all'){
+    const expW=3300,expH=2200;
+    const pdfC=document.createElement('canvas');
+    pdfC.width=expW;pdfC.height=expH;
+    const pdfCtx=pdfC.getContext('2d');
+    pdfCtx.fillStyle='#ffffff';pdfCtx.fillRect(0,0,expW,expH);
+    const _savedZ=allZoom,_savedPX=allPanX,_savedPY=allPanY;
+    _isExporting=true;
+    const L=computeAllLayout();
+    const pad=60;
+    allZoom=Math.min((expW-pad*2)/L.worldW,(expH-pad*2)/L.worldH);
+    allPanX=(expW-L.worldW*allZoom)/2;
+    allPanY=(expH-L.worldH*allZoom)/2;
+    const _origW=canvas.width,_origH=canvas.height;
+    canvas.width=expW;canvas.height=expH;
+    drawAllPartitions(pdfCtx,{width:expW,height:expH});
+    canvas.width=_origW;canvas.height=_origH;
+    allZoom=_savedZ;allPanX=_savedPX;allPanY=_savedPY;
+    _isExporting=false;
+    dataUrl=pdfC.toDataURL('image/png');
+    setTimeout(()=>render(),100);
+  } else {
+    const pdfScale=2.4;
+    const pdfC=document.createElement('canvas');
+    pdfC.width=Math.round(canvas.width*pdfScale);pdfC.height=Math.round(canvas.height*pdfScale);
+    const pdfCtx=pdfC.getContext('2d');
+    pdfCtx.imageSmoothingEnabled=true;pdfCtx.imageSmoothingQuality='high';
+    pdfCtx.drawImage(canvas,0,0,pdfC.width,pdfC.height);
+    dataUrl=pdfC.toDataURL('image/png');
+  }
   const kupac=document.getElementById('inpKupac').value||'—';
   const nalog=document.getElementById('inpNalog').value||'—';
   const datum=document.getElementById('inpDatum').value||'—';
   const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><title>Nalog ${nalog}</title>
   <style>
-    @page{margin:8mm;size:A4 landscape}
-    body{margin:0;padding:0;font-family:Arial,sans-serif;background:white}
-    .header{padding:5mm 8mm;border-bottom:2px solid #2c3e50;display:flex;justify-content:space-between;align-items:flex-start}
-    h1{font-size:14pt;color:#2c3e50;margin:0;letter-spacing:2px}
-    .meta{font-size:9pt;color:#333;text-align:right;line-height:1.7}
-    img{max-width:100%;height:auto;display:block;margin:0 auto}
-    .footer{margin-top:5mm;font-size:8pt;color:#999;text-align:center;padding-top:3mm;border-top:1px solid #ddd}
+    @page{margin:5mm;size:A4 landscape}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;overflow:hidden;background:white;font-family:Arial,sans-serif}
+    body{display:flex;flex-direction:column}
+    .hdr{flex-shrink:0;padding:2mm 5mm 2mm;border-bottom:1.5px solid #2c3e50;display:flex;justify-content:space-between;align-items:center}
+    .hdr h1{font-size:11pt;color:#2c3e50;letter-spacing:1.5px;margin:0}
+    .hdr-sub{font-size:6.5pt;color:#888;margin-top:1px}
+    .hdr-meta{font-size:7.5pt;color:#333;text-align:right;line-height:1.5}
+    .hdr-gen{font-size:6.5pt;color:#aaa;text-align:right;margin-top:1px}
+    .img-wrap{flex:1;overflow:hidden;display:flex;align-items:flex-start}
+    img{width:100%;height:auto;display:block;max-height:100%}
   </style>
   </head><body>
-  <div class="header">
-    <div><h1>KALKULATOR PREGRADA V51</h1><div style="font-size:8pt;color:#888">Radni Nalog / Projektna Dokumentacija</div></div>
-    <div class="meta"><div>Kupac: <strong>${kupac}</strong></div><div>Nalog: <strong>${nalog}</strong></div><div>Datum: <strong>${datum}</strong></div></div>
+  <div class="hdr">
+    <div>
+      <h1>KALKULATOR PREGRADA V54</h1>
+      <div class="hdr-sub">Radni Nalog / Projektna Dokumentacija</div>
+    </div>
+    <div>
+      <div class="hdr-meta">Kupac: <strong>${kupac}</strong> &nbsp;|&nbsp; Nalog: <strong>${nalog}</strong> &nbsp;|&nbsp; Datum: <strong>${datum}</strong></div>
+      <div class="hdr-gen">Generirano: ${new Date().toLocaleString('hr')}</div>
+    </div>
   </div>
-  <img src="${dataUrl}" onload="window.print()">
-  <div class="footer">Kalkulator Pregrada V51 · Generirano ${new Date().toLocaleString('hr')}</div>
+  <div class="img-wrap"><img src="${dataUrl}" onload="window.print()"></div>
   </body></html>`);
   win.document.close();
 }
@@ -2253,89 +2387,114 @@ function printOdabraneExec(){
   document.getElementById('odabraneModal').style.display='none';
   const sel=partitions.filter(p=>document.getElementById('odcb_'+p.id)?.checked);
   if(!sel.length){alert('Nema odabranih pregrada!');return;}
-  // Generiraj po 2 pregrade po stranici — svaka stranica portrait A4
   const ex=document.getElementById('dynamicPrintStyle');if(ex) ex.remove();
   const s=document.createElement('style');s.id='dynamicPrintStyle';
-  s.textContent='@page{size:A4 portrait;margin:8mm}';document.head.appendChild(s);
+  s.textContent='@page{size:A4 portrait;margin:5mm}';document.head.appendChild(s);
+  // A4 portrait canvas: 1654x2338 (200dpi). Header na vrhu SVAKE stranice u canvas.
+  const CW=1654, CH=2338;
+  const HDR=110; // header visina u pikselima u canvasu
+  const SEP=18;  // separator između 2 pregrade
+  const SLOTH=Math.floor((CH-HDR-SEP)/2); // visina slota po pregradi
+  const MARGIN=80;
+  const kupac=document.getElementById('inpKupac').value||'—';
+  const nalog=document.getElementById('inpNalog').value||'—';
+  const datum=document.getElementById('inpDatum').value||'—';
+  function drawHeader(ctx){
+    ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,CW,HDR);
+    ctx.strokeStyle='#2c3e50';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,HDR-1);ctx.lineTo(CW,HDR-1);ctx.stroke();
+    ctx.fillStyle='#2c3e50';ctx.font='bold 26px Rajdhani,sans-serif';ctx.textAlign='left';
+    ctx.fillText('KALKULATOR PREGRADA V54',20,38);
+    ctx.font='16px Arial';ctx.fillStyle='#888';
+    ctx.fillText('Odabrani ispis pregrada',20,62);
+    ctx.font='bold 18px Arial';ctx.textAlign='right';ctx.fillStyle='#333';
+    ctx.fillText('Kupac: '+kupac,CW-20,34);
+    ctx.fillText('Nalog: '+nalog+'   Datum: '+datum,CW-20,58);
+    ctx.fillText('Ispisano: '+new Date().toLocaleString('hr'),CW-20,82);
+  }
+  const LBLH=32; // label strip height in pixels
+  const INNER_H=SLOTH-LBLH; // drawable area below label strip
+  const INNER_MARGIN=130; // margin inside drawable area (for all dimension lines)
+  function drawSlot(ctx,p,slotTop,_pNumOd){
+    const r=calcPartition(p);
+    const napust=p.napust;
+    const slopeH=(p.slopeEdge==='bottom'&&p.slopeType!=='none')?Math.max(0,p.H2-p.H):0;
+    const totalH=Math.max(p.H,p.H2)+napust+slopeH+20;
+    // Scale to fill inner area (below label) with margins
+    const scale=Math.min((CW-2*INNER_MARGIN)/p.W,(INNER_H-2*INNER_MARGIN)/totalH);
+    const oX=(CW-p.W*scale)/2;
+    // Partition pixel height (from top of highest corner to floor+napust)
+    const partPxH=(Math.max(p.H,p.H2)+napust+slopeH)*scale;
+    // Center partition vertically in inner area
+    const innerTop=slotTop+LBLH;
+    const baseY=innerTop+(INNER_H-partPxH)/2+partPxH-napust*scale-slopeH*scale;
+    ctx.save();
+    ctx.beginPath();ctx.rect(0,slotTop,CW,SLOTH);ctx.clip();
+    ctx.fillStyle='white';ctx.fillRect(0,slotTop,CW,SLOTH);
+    // Label strip
+    ctx.fillStyle='rgba(41,182,246,0.1)';ctx.fillRect(0,slotTop,CW,LBLH);
+    ctx.fillStyle='#1a3a5c';ctx.font='bold 22px Rajdhani,sans-serif';ctx.textAlign='left';
+    ctx.fillText(_pNumOd+'. '+p.label,14,slotTop+LBLH-8);
+    ctx.fillStyle='#888';ctx.font='16px Courier New,monospace';ctx.textAlign='right';
+    ctx.fillText('W:'+p.W+' H:'+p.H+(p.slopeType!=='none'?'/'+p.H2:'')+'cm',CW-14,slotTop+LBLH-8);
+    const{lt,rt,lb,rb,hL,hR}=computeCorners(p,oX,baseY,scale);
+    const{hMax,splitLines,brVL,brVR,brH,razVL,razVR,razH,firstAlka}=r;
+    drawShape(ctx,p,lt,rt,lb,rb,oX,napust,scale);
+    drawGlazing(ctx,p,lt,rt,lb,rb,scale);
+    drawSplitLines(ctx,p,lt,lb,oX,scale,splitLines);
+    if(p.addZip) drawZip(ctx,p,lt,rt,lb,rb,hMax,napust,scale);
+    drawFittings(ctx,lt,rt,lb,rb,p,brVL,brVR,brH,razVL,razVR,razH,hL,hR,scale,oX,firstAlka,false);
+    // fontScale: same apparent size as single-view (1100px canvas, margin 90)
+    // single-view effective scale for this partition:
+    const _singleRefScale=Math.min(920/Math.max(p.W,1),420/Math.max(totalH,1));
+    // Enforce minimum scale so small partitions (e.g. 140cm) still have readable text
+    const _fontScale=Math.max(0.85, scale/_singleRefScale);
+    drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,false,0,1,_fontScale);
+    drawPartitionNumber(ctx,_pNumOd,rt.x-14,Math.min(lt.y,rt.y)-14);
+    ctx.restore();
+  }
   const pages=[];
   for(let i=0;i<sel.length;i+=2) pages.push(sel.slice(i,i+2));
-  // Crta svaku stranicu na offscreen canvas pa otvori printable prozor
   const pageDataUrls=pages.map(pageParts=>{
     const offC=document.createElement('canvas');
-    // A4 portrait @ 150dpi: 1240x1754; koristimo 1100x1556 (dovoljna rezolucija)
-    offC.width=1100; offC.height=1554;
+    offC.width=CW;offC.height=CH;
     const ctx=offC.getContext('2d');
-    ctx.fillStyle='white';ctx.fillRect(0,0,offC.width,offC.height);
-    const slotH=Math.floor(offC.height/pageParts.length);
+    ctx.fillStyle='white';ctx.fillRect(0,0,CW,CH);
+    drawHeader(ctx);
     pageParts.forEach((p,si)=>{
-      const r=calcPartition(p);
-      const margin=70;
-      const napust=p.napust;
-      const totalH=Math.max(p.H,p.H2)+napust+20;
-      const cW=offC.width, cH=slotH;
-      const scale=Math.min((cW-2*margin)/p.W,(cH-2*margin)/totalH);
-      const oX=(cW-p.W*scale)/2;
-      const slopeH=(p.slopeEdge==='bottom'&&p.slopeType!=='none')?Math.max(0,p.H2-p.H):0;
-      // Offset: si*slotH brings second partition down
-      const baseY=si*slotH+slotH-margin-napust*scale-slopeH*scale;
-      // Clip to slot
-      ctx.save();
-      ctx.beginPath();ctx.rect(0,si*slotH,cW,slotH);ctx.clip();
-      // White slot bg
-      ctx.fillStyle='white';ctx.fillRect(0,si*slotH,cW,slotH);
-      // Slot separator
-      if(si>0){ctx.strokeStyle='#ccc';ctx.lineWidth=1;ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(20,si*slotH);ctx.lineTo(cW-20,si*slotH);ctx.stroke();ctx.setLineDash([]);}
-      const{lt,rt,lb,rb,hL,hR}=computeCorners(p,oX,baseY,scale);
-      const{hMax,splitLines,brVL,brVR,brH,razVL,razVR,razH,firstAlka}=r;
-      // Partition number badge top-right
+      const slotTop=HDR+si*(SLOTH+SEP);
       const _pNumOd=partitions.findIndex(x=>x.id===p.id)+1;
-      // Draw
-      drawShape(ctx,p,lt,rt,lb,rb,oX,napust,scale);
-      drawGlazing(ctx,p,lt,rt,lb,rb,scale);
-      drawSplitLines(ctx,p,lt,lb,oX,scale,splitLines);
-      if(p.addZip) drawZip(ctx,p,lt,rt,lb,rb,hMax,napust,scale);
-      drawFittings(ctx,lt,rt,lb,rb,p,brVL,brVR,brH,razVL,razVR,razH,hL,hR,scale,oX,firstAlka,false);
-      drawAnnotations(ctx,p,lt,rt,lb,rb,oX,baseY,napust,scale,r,false);
-      // Label
-      const lblColor='#29b6f6';
-      ctx.fillStyle='rgba(41,182,246,0.1)';ctx.fillRect(0,si*slotH,cW,28);
-      ctx.fillStyle='#29b6f6';ctx.font='bold 14px Rajdhani,sans-serif';ctx.textAlign='left';
-      ctx.fillText(_pNumOd+'. '+p.label,14,si*slotH+20);
-      ctx.fillStyle='#888';ctx.font='11px Courier New,monospace';ctx.textAlign='right';
-      ctx.fillText('W:'+p.W+' H:'+p.H+(p.slopeType!=='none'?'/'+p.H2:'')+'cm',cW-14,si*slotH+20);
-      drawPartitionNumber(ctx,_pNumOd,rt.x-14,Math.min(lt.y,rt.y)-14);
-      ctx.restore();
+      if(si===1){// separator line between 2 slots
+        ctx.strokeStyle='#ddd';ctx.lineWidth=1;ctx.setLineDash([8,5]);
+        ctx.beginPath();ctx.moveTo(30,HDR+SLOTH+SEP/2);ctx.lineTo(CW-30,HDR+SLOTH+SEP/2);ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      drawSlot(ctx,p,slotTop,_pNumOd);
     });
     return offC.toDataURL('image/png');
   });
   const win=window.open('','_blank');
   const imgs=pageDataUrls.map(u=>`<div class="page"><img src="${u}"></div>`).join('');
-  const kupac=document.getElementById('inpKupac').value||'—';
-  const nalog=document.getElementById('inpNalog').value||'—';
-  const datum=document.getElementById('inpDatum').value||'—';
   win.document.write(`<!DOCTYPE html><html><head><title>Ispiši odabrane</title>
   <style>
-    @page{size:A4 portrait;margin:8mm}
+    @page{size:A4 portrait;margin:5mm}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:white;font-family:Arial,sans-serif}
-    .header{border-bottom:2px solid #2c3e50;padding-bottom:4mm;margin-bottom:3mm;display:flex;justify-content:space-between}
-    .header h1{font-size:13pt;color:#2c3e50;letter-spacing:1px}
-    .header .meta{font-size:8pt;color:#333;text-align:right;line-height:1.6}
-    .page{page-break-after:always;page-break-inside:avoid;display:block;width:100%}
+    html,body{background:white;overflow:hidden}
+    .page{page-break-after:always;page-break-inside:avoid;display:block;width:100%;overflow:hidden}
     .page:last-child{page-break-after:avoid}
-    .page img{width:100%;display:block}
+    .page img{width:100%;display:block;max-height:100vh}
   </style>
-  </head><body>
-  <div class="header">
-    <div><h1>PREGRADE — Odabrani ispis</h1><div style="font-size:8pt;color:#888">Kalkulator Pregrada V53</div></div>
-    <div class="meta">Kupac: <strong>${kupac}</strong><br>Nalog: <strong>${nalog}</strong><br>Datum: <strong>${datum}</strong></div>
-  </div>
-  ${imgs}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+  </head><body>${imgs}<` + `script>window.onload=function(){window.print();}<\/script></body></html>`);
   win.document.close();
 }
 // ═══════════════════════════════════════════════════════
 //  CANVAS EVENTS
 // ═══════════════════════════════════════════════════════
+// Keyboard shortcuts for Undo/Redo
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key==='z'){e.preventDefault();undoAction();}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.shiftKey&&e.key==='z'))){e.preventDefault();redoAction();}
+});
 (function setupEvents(){
   const ready=()=>{
     const c=document.getElementById('canvas');
@@ -2374,6 +2533,7 @@ window.onload=function(){
   loadPartitionToForm();
   render();
   updateAllViewBar();
+  _updateUndoUI();
 };
 </script>
 
@@ -2419,7 +2579,7 @@ window.addEventListener('load', function() {
     var a = document.createElement('a');
     var kupacName = (state.kupac || 'projekt').replace(/[^a-zA-Z0-9\s\-_]/g, '').trim() || 'projekt';
     a.href = URL.createObjectURL(blob);
-    a.download = kupacName + '_' + (state.nalog || new Date().toISOString().split('T')[0]) + '.ptv53';
+    a.download = kupacName + '_' + (state.nalog || new Date().toISOString().split('T')[0]) + '.ptv54';
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -2583,7 +2743,7 @@ window.addEventListener('load', function() {
     if (!isOutline()) {
       ctx.fillStyle = 'rgba(8,17,29,.82)'; ctx.fillRect(0, 0, W, 30);
       ctx.fillStyle = '#29b6f6'; ctx.font = 'bold 12px Rajdhani,sans-serif'; ctx.textAlign = 'left';
-      ctx.fillText('PREGRADA V53 · ' + partitions.length + ' pregrada(e)', 10, 20);
+      ctx.fillText('PREGRADA V54 · ' + partitions.length + ' pregrada(e)', 10, 20);
     }
   }
 
